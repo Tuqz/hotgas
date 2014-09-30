@@ -40,11 +40,10 @@ Particle.prototype.update = function() {
 Particle.prototype.draw = function() {
   var ctx = document.getElementById('canvas').getContext('2d');
   var test = this.vel.mag();
-  ctx.fillStyle = 'rgb('+Math.floor(test)+', 0, 0)';
+  ctx.fillStyle = 'rgb('+Math.floor(test)*10+', 0, 0)';
   ctx.beginPath();
   ctx.arc(this.pos.x, this.pos.y, 10, 0, 2*Math.PI);
   ctx.fill();
-  ctx.endPath();
 }
 
 var temp = 10;
@@ -57,17 +56,20 @@ function callback() {
 }
 
 function glob_update() {
-  particles.forEach(function(element, index, array) {console.log(element)});
+  particles.forEach(function(element, index, array) {element.update();});
 }
 
 function glob_draw() {
   var ctx = document.getElementById('canvas').getContext('2d');
   ctx.clearRect(0, 0, 800, 600);
+  particles.forEach(function(element, index, array) {element.draw();});
 }
 
 window.onload = function() {
   setInterval(callback, dt*1000);
-  particles.forEach(Particle(new Vector(400, 300), new Vector(10, 10)));
+  for (i = 0; i < number; i++) {
+    particles[i] = new Particle(new Vector(i*10, i*10), new Vector(10, 10));
+  }
 };
 </script>
 <canvas id="canvas" width="800" height="600"></canvas>
