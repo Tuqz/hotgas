@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script type='text/javascript'>
+var dt = 0.017;
+
+var Vector = function(x, y) {
+  this.x = x;
+  this.y = y;
+}
+
+Vector.prototype.add = function(other) {
+  out = new Vector(this.x + other.x, this.y + other.y);
+  return out;
+}
+
+Vector.prototype.sub = function(other) {
+  out = new Vector(this.x - other.x, this.y - other.y);
+  return out;
+}
+
+Vector.prototype.mul = function(scalar) {
+  out = new Vector(this.x * scalar, this.y * scalar);
+  return out;
+}
+
+Vector.prototype.mag = function() {
+  return Math.sqrt(this.x*this.x + this.y*this.y)
+}
+
+var Particle = function(pos, vel) {
+  this.pos = pos;
+  this.vel = vel;
+}
+
+Particle.prototype.update = function() {
+  this.pos = this.pos.add(this.vel.mul(dt));
+}
+
+Particle.prototype.draw = function() {
+  var ctx = document.getElementById('canvas').getContext('2d');
+  var test = this.vel.mag();
+  ctx.fillStyle = 'rgb('+Math.floor(test)+', 0, 0)';
+  ctx.beginPath();
+  ctx.arc(this.pos.x, this.pos.y, 10, 0, 2*Math.PI);
+  ctx.fill();
+  ctx.endPath();
+}
+
+var temp = 10;
+var number = 10;
+var particles = new Array(number);
+
+function callback() {
+  glob_update();
+  glob_draw();
+}
+
+function glob_update() {
+  particles.forEach(function(element, index, array) {console.log(element)});
+}
+
+function glob_draw() {
+  var ctx = document.getElementById('canvas').getContext('2d');
+  ctx.clearRect(0, 0, 800, 600);
+}
+
+window.onload = function() {
+  setInterval(callback, dt*1000);
+  particles.forEach(Particle(new Vector(400, 300), new Vector(10, 10)));
+};
+</script>
+<canvas id="canvas" width="800" height="600"></canvas>
+</body>
+</html>
