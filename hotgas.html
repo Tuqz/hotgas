@@ -4,6 +4,14 @@
 <script type='text/javascript'>
 var dt = 0.017;
 
+function erf(x) {
+  total = 0;
+  for(var i = 0; i < x; i = i+0.1) {
+    total += 0.1*Math.exp(-(i*i));
+  }
+  return (total*2)/Math.sqrt(Math.PI);
+}
+
 var Vector = function(x, y) {
   this.x = x;
   this.y = y;
@@ -34,33 +42,88 @@ var Particle = function(pos, vel) {
 }
 
 Particle.prototype.update = function() {
-  if(this.pos.x < radius || this.pos.x > 800-radius) {
+  if(this.pos.x < radius+(width-xboxsize)/2 || this.pos.x > (width/2)-radius + (xboxsize/2)) {
     this.vel.x = -this.vel.x;
+    if(this.pos.x < radius + (width-xboxsize)/2) {
+      this.pos.x = radius + (width-xboxsize)/2;
+    } else {
+      this.pos.x = (width/2) - radius + (xboxsize/2);
+    }
+    impacts.push(2*Math.abs(this.vel.x));
   }
-  if(this.pos.y < radius || this.pos.y > 600-radius) {
+  if(this.pos.y < radius + (height - yboxsize)/2 || this.pos.y > (height/2) - radius + (yboxsize/2)) {
     this.vel.y = -this.vel.y;
+    if(this.pos.y < radius + (height-yboxsize)/2) {
+      this.pos.y = radius + (height-yboxsize)/2;
+    } else {
+      this.pos.y = (height/2) - radius + (yboxsize/2);
+    }
+    impacts.push(2*Math.abs(this.vel.y));
   }
-  this.pos = this.pos.add(this.vel.mul(dt));
+  this.pos = this.pos.add(this.vel.mul(dt*5));
 }
 
 Particle.prototype.draw = function() {
-  var ctx = document.getElementById('canvas').getContext('2d');
   var speed = this.vel.mag();
-  ctx.fillStyle = 'rgb('+Math.floor(speed*20)+', 0,'+(255-Math.floor(speed*20))+')';
-  ctx.strokeStyle = ctx.fillStyle;
+  ctx.lineWidth = 0;
+  ctx.fillStyle = 'rgb('+Math.floor(speed*4)+', 0,'+(255-Math.floor(speed*4))+')';
   ctx.beginPath();
   ctx.arc(this.pos.x, this.pos.y, radius, 0, 2*Math.PI);
   ctx.fill();
 }
 
-var temp = 10;
-var number = 50;
+function rand_particle() {
+  x = Math.random()*(xboxsize-2*radius);
+  y = Math.random()*(yboxsize-2*radius);
+  u = Math.random();
+  j = 0;
+  cum_prob = 0;
+  a = Math.sqrt(temp);
+  while(u > cum_prob) {
+    j = j + 1;
+    cum_prob = erf(j/(Math.sqrt(2)*a)) - Math.sqrt(2/Math.PI)*(j*Math.exp(-(j*j)/(2*(a*a))))/a;
+  }
+  u = (Math.random()*2)-1;
+  v = (Math.random()*2)-1;
+  vel = new Vector(u, v)
+  vel = vel.mul(j/vel.mag());
+  return new Particle(new Vector(Math.floor(x+(width-xboxsize)/2 + radius), Math.floor(y+(height-yboxsize)/2) + radius), vel);
+}
+
+var temp = 1000;
+var oldtemp = temp;
+var number = 100;
 var particles = new Array(number);
 var radius = 10;
+var width = undefined;
+var height = undefined;
+var boxsize = 0;
+var time = 0;
+var impacts = new Array();
+var ctx;
 
 function callback() {
+  if(particles.length != number) {
+    if(particles.length < number) {
+      delta = number - particles.length;
+      for(var i = 0; i <= delta; i++) {
+        particles[number-delta+i] = rand_particle();
+      }
+    } else {
+      while(particles.length != number) {
+        particles.pop();
+      }
+    }
+  }
+  if(oldtemp != temp) {
+    for(var i = 0; i < number; i++) {
+      particles[i] = rand_particle();
+    }
+    oldtemp = temp;
+  }
   glob_update();
   glob_draw();
+  time++;
 }
 
 function glob_update() {
@@ -68,26 +131,77 @@ function glob_update() {
 }
 
 function glob_draw() {
-  var ctx = document.getElementById('canvas').getContext('2d');
-  ctx.clearRect(0, 0, 800, 600);
-  ctx.strokeStyle = "#000000";
-  ctx.rect(0, 0, 800, 600);
-  ctx.stroke();
+  ctx.clearRect(0, 0, width, height);
+  var total = 0;
+  impacts.forEach(function(element, index, array) {total = total + element});
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "rgb(0, "+Math.floor((20*total/(2*(xboxsize + yboxsize)*time*dt)))+", 0)";
+  ctx.strokeRect((width-xboxsize)/2, (height-yboxsize)/2, xboxsize, yboxsize);
   particles.forEach(function(element, index, array) {element.draw();});
 }
 
 window.onload = function() {
-  for (i = 0; i < number; i++) {s
+  canvas = document.getElementById('canvas')
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  ctx = canvas.getContext('2d');
+  width = canvas.width;
+  height = canvas.height;
+  xboxsize = width/2;
+  yboxsize = height/2;
   setInterval(callback, dt*1000);
-    x = Math.random()*(800-2*radius);
-    y = Math.random()*(600-2*radius);
-    u = (Math.random()*20)-10;
-    v = (Math.random()*20)-10;
-    particles[i] = new Particle(new Vector(x+radius, y+radius), new Vector(u, v));
+  for (var i = 0; i < number; i++) {
+    particles[i] = rand_particle();
   }
 };
+
+function var_update() {
+  var new_temp = document.getElementById("temp").value;
+  var new_number = document.getElementById("number").value;
+  var new_boxsize = document.getElementById("boxsize").value;
+  new_temp = Number(new_temp);
+  if(isNaN(new_temp)) {
+    document.getElementById("err1").innerHTML = "Temperature must be a number (no spaces)";
+  } else {
+    if(new_temp <= 100 && new_temp > 0) {
+      document.getElementById("err1").innerHTML = "";
+      temp = new_temp*20;
+      impacts = [];
+      time = 0;
+    } else {
+      document.getElementById("err1").innerHTML = "Temperature must be positive and <= 100";
+    }
+  }
+  new_number = parseInt(new_number);
+  if(isNaN(new_number)) {
+    document.getElementById("err2").innerHTML = "Number must be an integer (no spaces)";
+  } else {
+    if(new_number > 0) {
+      document.getElementById("err2").innerHTML = "";
+      number = new_number;
+      impacts = [];
+      time = 0;
+    } else {
+      document.getElementById("err2").innerHTML = "Number must be positive";
+    }
+  }
+  new_boxsize = Number(new_boxsize);
+  if(isNaN(new_boxsize)) {
+    document.getElementById("err3").innerHTML = "Box size must be a number (no spaces)"
+  } else {
+    if(new_boxsize > 0 && new_boxsize <= 1) {
+      xboxsize = new_boxsize*width;
+      yboxsize = new_boxsize*height;
+      document.getElementById("err3").innerHTML = "";
+      impacts = [];
+      time = 0;
+    } else {
+      document.getElementById("err3").innerHTML = "Box size must be between 0 and 1"
+    }
+  }
+}
 </script>
-<h1>A sample of hot gas</h1>
-<canvas id="canvas" width="800" height="600"></canvas>
+<canvas style="width:100%; height:100vh" id="canvas"></canvas>
+Temperature(1:100): <input type="text" id="temp"><b id="err1"></b> Number: <input type="text" id="number"><b id="err2"></b> Box Size (0:1): <input type="text" id="boxsize"><b id="err3"></b><button type="button" onclick="var_update();">Regenerate</button>
 </body>
 </html>
